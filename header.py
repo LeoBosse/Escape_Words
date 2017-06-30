@@ -25,7 +25,8 @@ OBJD = {
 						),
 	"cell key"		:	Objet(	["cell key"],
 							"It is the key from your cell. You are free!",
-							actions_list = ["take", "drop"]
+							actions_list = ["take", "drop"],
+							state = "hidden"
 						),
 							
 	"knife"		:	Objet(	["knife"],
@@ -39,7 +40,11 @@ OBJD = {
 							state = -1
 						),
 	"bed"		:	Objet(	["bed"],
-							"You see a large bed, seems very confortable"
+							"You see a large sur-elevated king-sized bed. It seems very confortable, but the floor beneath it certainly doesn't remember what a broom looks like.",
+							connectors = ["under"],
+							description_connectors = "You look under the bed, through 5cm of dust...",
+							inventory = ["cell key"]
+							
 						),
 	"broom"		:	Objet(	["broom"],
 							"An old broom with a long wooden pole and a few straw still attached to it.",
@@ -53,6 +58,11 @@ OBJD = {
 						)
 						
 }
+
+for key, value in OBJD.items():
+	for i, o in enumerate(value.inventory):
+		OBJD[key].inventory[i] = OBJD[o]
+
 
 ########################################################################################################################
 ########################################################################################################################
@@ -75,7 +85,7 @@ ROOMD = {
 							0,
 							exits = [	Exits( ["door"],"the only door of the room", "north", "stairs", state = "closed", keys=[OBJD["cell key"]]), 
 										Exits( ["window", "small window"], "a small window", "east", "roof")],
-							inventory = ["mirror", "bed"],
+							inventory = [OBJD["mirror"], OBJD["bed"]],
 							description = "You see a cell.",
 							first_auto_view = "It is your well known cell"
 						),
@@ -105,14 +115,14 @@ ROOMD = {
 										Exits(["stairway"], "a stairway going straight to a big room", "north", "hall"),
 										Exits(["cell stairs", "normal stairs"], "a stairway going straight back to your cell", "south", "stairs"),
 										Exits(["trap"], "a trap in the ceiling", "up", "grenier")],
-							inventory = ["broom"],
+							inventory = [OBJD["broom"]],
 							description = "A small corridor opens in front of you. There is nothiing special about this place.",
 							first_auto_view = "A small corridor opens up before you."
 						),
 	"bedroom 1"	:	Room(	["bedroom 1"],
 							3,
 							exits = [	Exits(["painted door"], "a nice painted door", "west", "corridor")],
-							inventory = ["bed"],
+							inventory = [OBJD["bed"]],
 							description = "You see a big bedroom",
 							first_auto_view = "You enter a big bedroom, well furnished and letting the sun enter by its broken window."
 						),
@@ -130,7 +140,7 @@ ROOMD = {
 							4,
 							exits = [	Exits(["painted door", "door"], "a nice painted door", "east", "corridor"),
 										Exits(["glass door", "door"], "a big glass door", "west", "balcon 2")],
-							inventory = ["bed"],
+							inventory = [OBJD["bed"]],
 							description = "You see a big bedroom",
 							first_auto_view = "You enter a big bedroom, well furnished."
 						),
@@ -157,7 +167,7 @@ ROOMD = {
 										Exits(["big door", "strong door", "door"], "a very big door, reinforced with iron nails a pikes", "east", "court"),
 										Exits(["broken door", "door"], "a broken door", "south", "living room"),
 										Exits(["door"], "a door", "west", "eating room")],
-							inventory = ["treasor"],
+							inventory = [OBJD["treasure"]],
 							description = "You see what seem to be the hallway of the castle. But it is filled with gold and gems.",
 							first_auto_view = "A yellow light hits you in the eyes and you are blind for a couple of second. When you recover your sight, it is to discover a huge treasure of gold and gems, illuminated by a the sun coming in via a ig broken door."
 						),
@@ -178,7 +188,7 @@ ROOMD = {
 										Exits(["small door", "door"], "a small door", "east", "living room"),
 										Exits(["big door"], "a big door to let the food come in", "west", "back court"),
 										Exits(["trap"], "a trap in the floor", "down", "basements")],
-							inventory = ["knife"],
+							inventory = [OBJD["knife"]],
 							description = "There is a whole bunch of cooking equipment",
 							first_auto_view = "You enter in a fully equiped kitchen."
 						),
@@ -187,7 +197,7 @@ ROOMD = {
 							7,
 							exits = [	Exits(["broken door", "door"], "a broken door", "north", "hall"),
 										Exits(["small door"], "a small door", "west", "kitchen")],
-							inventory = ["knife"],
+							inventory = [OBJD["knife"]],
 							description = "You see some comfortable sofa and chairs, a chess table, big windiw to enjoy the summer.",
 							first_auto_view = "You enter what appears to be the living room."
 						),
@@ -264,17 +274,16 @@ DIRECTIONS_LIST = 	[
 
 
 VERBS = [
-					Verb(["look", "l"], 			[0,1]),
-					Verb(["go", "g"], 				[1]),
-					Verb(["take", "t"], 			[1]),
-					Verb(["drop", "throw"], 	[1]),
-					Verb(["break"], 				[1]),
+					Verb(["look", "l"], 			[0,1, 2]),  #names (main name first) , number of abject involved , condition on the object(s) position
+					Verb(["go", "g"], 			[1, 2]),
+					Verb(["take", "t"], 			[1], "not_in_inventory"),
+					Verb(["drop", "throw"], 		[1], "in_inventory"),
+					Verb(["break"], 			[1]),
 					Verb(["inventory", "i"], 		[0]),
-					Verb(["help", "h"], 			[0])
+					Verb(["help", "h"], 			[0]),
+					Verb(["put"], 				[2])
 		]
-		
-		
-		
+
 #########################################################################################################################
 #																														#
 #		INIT PERSO MODULE AND CREATE PERSO																				#
@@ -282,7 +291,7 @@ VERBS = [
 #########################################################################################################################
 
 from perso import *	
-PERSO = Perso(ROOMD["cell"], inventory=[OBJD["lamp"], OBJD["cell key"]])
+PERSO = Perso(ROOMD["cell"], inventory=[OBJD["lamp"]])
 
 
 

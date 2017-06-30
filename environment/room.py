@@ -19,6 +19,9 @@ class Room:
 
 		self.description = description
 		self.first_view = first_auto_view
+		
+		self.connectors = ["in"]
+		self.state = 0
 
 	def Enter(self):
 		if self.known:
@@ -30,7 +33,7 @@ class Room:
 	def Exit(self, used_exit):
 		print("You exit the " + self.name + " via " + used_exit.name + "." + " (" + used_exit.direction + ")")
 		
-	def Describe(self):
+	def Describe(self, connectors = []):
 		d_str = self.description + "\n"
 		d_str += "You see the following exit(s):\n"
 		for ex in self.exits:
@@ -39,8 +42,8 @@ class Room:
 		if len(self.inventory) != 0	:
 			d_str += "You can also see different objects laying around:\n"
 			for i, obj in enumerate(self.inventory):
-				d_str += "\ta " + obj + "\n"
-			
+				if obj.state != "hidden":
+					d_str += "\ta " + obj.name + "\n"
 		return d_str
 
 	def GetExitFromDirection(self, direction_str):
@@ -63,7 +66,7 @@ class Room:
 
 
 	def __repr__(self):
-		return "Object \"room\" " + self.name
+		return "Object \"room\": " + self.name
 	
 	def __eq__(self, string):
 		if type(string) is type(str()):

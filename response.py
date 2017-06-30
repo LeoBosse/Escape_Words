@@ -12,7 +12,7 @@ class Action:
 		self.meaning = ""
 		self.COD = ""
 		self.useless_list=["a", "the", "to", "at"]
-		self.connectors_list=["in", "on", "with"]
+		self.connectors_list=["in", "on", "with", "under"]
 		
 		self.verb = ""
 		self.connectors = []
@@ -33,18 +33,19 @@ class Action:
 				self.connectors.append(self.chaine[i])
 				tmp = []
 			i+=1
-		if tmp !=[]:
+		if tmp != []:
 			self.CODs.append(tmp)
 		for i, cod in enumerate(self.CODs):
-			tmp=""
+			tmp = ""
 			for j, w in enumerate(cod):
 				tmp += w + " " 
 			self.CODs[i] = tmp.strip()
-	
+		
+		
 	
 	def Verify(self):
 
-##	VERIFY IF VERB EXIST. IF YES, TAKE THE DEFAULT WRITING (e.g: l -> look)
+##VERIFY IF VERB EXIST. IF YES, TAKE THE DEFAULT WRITING (e.g: l -> look)
 		verified = False
 		error=""
 		i=0
@@ -94,69 +95,115 @@ class Action:
 				
 				return True, ""
 				
+##VERIFY THERE IS THE GOOD NUMBER OF CODs FOR THE VERB
+		if len(self.CODs) not in self.verb.nb_obj:
+			return False, "Wrong number of CODs for this verb, expected: " + str(self.verb.nb_obj) + ", received: " + str(len(self.CODs))
+				
+				
 ## VERIFY IF LOOK IS USED WITHOUT COD
 		if self.verb.name == "look" and len(self.CODs) == 0:
 			self.CODs.append(PERSO.room)
 
 		
 		if len(self.CODs) > 0:
-## VERIFY IF ALL OBJECTS (CODs) EXIST AS OBJECTS OR ROOMS, IF YES TAKE THE DEFAULT WRITING (e.g: l -> look)
-			verified = False
-			for i, cod in enumerate(self.CODs):
-				for k in OBJD.keys():
-					if cod in OBJD[k].names:
-						verified = True
-						self.CODs[i] = OBJD[k]
-						break
-				if cod == "room":
-					verified = True
-					self.CODs[i] = PERSO.room
-				else:
-					for k in ROOMD.keys():
-						if cod in ROOMD[k].names:
-							verified = True
-							self.CODs[i] = ROOMD[k]
-							break
-			if verified is False:
-				return False, "COD neither room nor object"
 			
 ## VERIFY IF ALL OBJECTS ARE REACHABLE
-			verified = False
 			for i, cod in enumerate(self.CODs):
-				if cod == PERSO.room or cod in PERSO.room.inventory or cod in PERSO.inventory:
-					verified = True
-			if(verified == False):
-				return False, "Object not reachable"
-				
+				if(cod != ""):
+					place = self.FindReachableObject(cod)
+					#print("PLACE:", place)
+					if place is not False:
+						if type(place) == type(str()) and place == PERSO.room.name:
+							self.CODs[i] = ROOMD[PERSO.room.name]
+						else:
+							#print(place.inventory)
+							for j, obj in enumerate(place.inventory):
+								if cod == obj:
+									self.CODs[i] = place.inventory[j]
+									#print("CODs[i]", self.CODs[i])
+					else:
+						return False, "Object not reachable"
+					
+					if self.CODs[i].state == "hidden":
+						return False, "Object reachable but hidden. You little cheater!"
+			
+			#print("CODs:", self.CODs)
+			
+## VERIFY IF ALL OBJECTS (CODs) EXIST AS OBJECTS OR ROOMS, IF YES: TAKE THE DEFAULT WRITING (e.g: l -> look)
+			#verified = False
+			#for i, cod in enumerate(self.CODs):
+				#for k in OBJD.keys():
+					#if cod in OBJD[k].names:
+						#verified = True
+						#self.CODs[i] = OBJD[k]
+						#break
+				#if cod == "room":
+					#verified = True
+					#self.CODs[i] = PERSO.room
+				#else:
+					#for k in ROOMD.keys():
+						#if cod in ROOMD[k].names:
+							#verified = True
+							#self.CODs[i] = ROOMD[k]
+							#break
+			#if verified is False:
+				#return False, "COD neither room nor object"
 
+
+
+##################################################################################################################################
+###			FROM NOW ON, self.CODs[i] IS THE OF Object TYPE, NOT STRING, EXCEPT IF THERE IS A HOLE BEFORE A CONNECTOR
+##################################################################################################################################
+
+
+## VERIFY IF COD IS IN THE RIGHT PLACE TO BE USED (e.g. : "IN_ROOM" FOR "TAKE", OR "IN_INVENTORY" FOR "DROP")
+			if self.verb.pos_obj_condition == "not_in_inventory" and self.CODs[0].name in PERSO.inventory:
+				return False, "Object is already in your inventory"
+			elif self.verb.pos_obj_condition == "in_inventory" and self.CODs[0].name not in PERSO.inventory:
+				return False, "Object is not in your inventory (maybe in the room)"
+			
 
 ## NO CONNECTORS: VERIFY IF THE ACTION ON THE COD IS ALLOWED
-		if len(self.connectors) == 0:   #i.e 1 verb and 0 or 1 COD
-			print(self.verb)
-			if len(self.CODs) not in self.verb.nb_obj:
-				return False, "Invalid number of COD"
-			if self.verb != "look" and len(self.CODs) == 1 and self.CODs[0].AllowAction(self.verb.name) is False:
-				verified = False
-				error = "Verb not allowed on object"
-				return (verified, error)
-	
-	
-## VERIFY IF CONNECTORS EXIST
-		for i, con in enumerate(self.connectors):
-			if con not in self.connectors_list:
-				verified = False
-				error = "con"
-				return (verified, error)
+			if len(self.connectors) == 0:   #i.e 1 verb and 0 or 1 COD
+				#print(self.verb)
+				if len(self.CODs) not in self.verb.nb_obj:
+					return False, "Invalid number of COD"
+				if self.verb != "look" and len(self.CODs) == 1 and self.CODs[0].AllowAction(self.verb.name) is False:
+					verified = False
+					error = "Verb not allowed on object"
+					return (verified, error)
 
-## VERIFY THERE IS SOMETING TO CONNECT
-		if len(self.connectors) > 0 and len(self.CODs == 0):
-			verified = False
-			error = "con miss cod"
-			return (verified, error)
-		
-		
+			
+			if len(self.connectors) > 0:
+## VERIFY IF CONNECTORS EXIST
+				for i, con in enumerate(self.connectors):
+					if con not in self.connectors_list:
+						return (False, "Connector " + con + " do not exist in my language")
+
+## VERIFY IF THERE IS SOMETING TO CONNECT
+				if len(self.connectors) > 0 and len(self.CODs) == 0:
+					return False, "connectors miss cod"
+
+## MAX NUMBER OF CONNECTORS == 1:
+				if len(self.connectors) > 1:
+					return False, "Too complicated for me (nb connectors > 1)"
+
+## VERIFY THAT THERE IS EXACTLY TWO COD TO CONNECT
+				if len(self.CODs) != 2:
+					return False, "I want EXACTLY two 2 cod for the moment"
+
+## VERIFY THAT THE 2 OBJECTS ARE DIFFERENT
+				if self.CODs[0] == self.CODs[1]:
+					return False, "Cannot connect an object with itself"
+
+## VERIFY IF THE INDIRECT OBJ (the 2nd one) ACCEPT THE CONNECTOR:
+				if self.connectors[0] not in self.CODs[1].connectors:
+					return False, "Indirect object does not accept this connector"
+
+
+
 		return (verified, error)
-		
+
 	def Repondre(self):
 		
 		self.Simplify()
@@ -171,11 +218,16 @@ class Action:
 		if verified:
 			
 			if self.verb.name == "look":
-				if self.CODs[0].name in OBJD.keys():
-					reponse = OBJD[self.CODs[0].name].description				
+				#if self.CODs[0].name in OBJD.keys():
+					#reponse = OBJD[self.CODs[0].name].Describe()
+				#else:
+					#reponse = PERSO.room.Describe()
+				if len(self.CODs) < 2:
+					reponse = self.CODs[0].Describe(self.connectors)
 				else:
-					reponse = PERSO.room.Describe()
-			
+					reponse = self.CODs[1].Describe(self.connectors)
+				
+				
 			elif self.verb == "inventory":
 				reponse = PERSO.PrintInventory()
 							
@@ -188,13 +240,14 @@ class Action:
 				#reponse = "You use "+ self.CODs[0].name
 			
 			elif self.verb.name == "take":
+				print(self.FindReachableObject(self.CODs[0]))
+				self.FindReachableObject(self.CODs[0]).Drop(self.CODs[0].name)
 				PERSO.inventory.append(self.CODs[0])
-				ROOMD[PERSO.room.name].Drop(self.CODs[0].name)
 				reponse = "You take " + self.CODs[0].name
 			
 			elif self.verb.name == "drop":
 				PERSO.Drop(self.CODs[0].name)
-				ROOMD[PERSO.room.name].inventory.append(self.CODs[0].name)
+				ROOMD[PERSO.room.name].inventory.append(self.CODs[0])
 				reponse = "You drop " + self.CODs[0].name
 			
 			elif self.verb.name == "help":
@@ -202,13 +255,37 @@ class Action:
 				
 			elif self.verb.name == "break":
 				print("BREAK ;)")
-				
+                            
+			elif self.verb.name == "put":
+				self.FindReachableObject(self.CODs[0]).Drop(self.CODs[0])
+				self.CODs[1].inventory.append(self.CODs[0])
+			
 			
 			else:
 				reponse = "I understood everything but I suck."
 		
 		return reponse	
 	
+	
+	def FindReachableObject(self, obj):
+		if obj == PERSO.room or obj == "room":
+			return PERSO.room.name
+
+		elif obj in PERSO.room.inventory:
+			return ROOMD[PERSO.room.name]
+		
+		elif obj in PERSO.inventory:
+			return PERSO
+		
+		else:
+			for i, o in enumerate(PERSO.inventory):
+				if obj in o.inventory:
+					return PERSO.inventory[i]
+			for i, o in enumerate(ROOMD[PERSO.room.name].inventory):
+				if obj in o.inventory:
+					return ROOMD[PERSO.room.name].inventory[i]
+		
+		return False
 	
 	
 	def Simplify(self):
@@ -239,9 +316,3 @@ class Action:
 			if i+2 != len(self.chaine):
 				COD += " "
 		return COD
-		
-		
-		
-		
-		
-		
